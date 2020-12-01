@@ -1,6 +1,10 @@
 from app import app
-from flask import jsonify, request
+from flask import jsonify, request, send_from_directory, send_file
 import gc
+from app.Test import Test
+import os
+from zipfile import ZipFile
+from datetime import datetime
 
 
 @app.route("/")
@@ -21,12 +25,15 @@ def garbage_collector():
 
 @app.route("/testing", methods=["GET", "POST"])
 def testing():
-    if "correct_text" in request.json.keys():
-        correct_text = request.json.get("correct_text")
-        del request.json["correct_text"]
-    else: 
-        correct_text = False
-    request_ner = RequestNer(request.json)
-    response_ner = ResponseNer(request_ner.__dict__)
+    test = { }
+    for credit in request.json.get("creditos"):
+        t = Test(None, credit)
+        test[credit] = (t.make_test(True))
     
-    return jsonify(response_ner.json_response(correct_text=correct_text))
+    return jsonify(test)
+
+@app.route('/download/<path:filename>', methods=['GET', 'POST'])
+def download(filename):
+    #http://localhost:4503/download/809035316
+    directory = "results/reviewed/"+filename+".xlsx"
+    return send_file(directory, as_attachment=True)
