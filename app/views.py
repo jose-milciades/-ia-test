@@ -23,14 +23,52 @@ def garbage_collector():
     return "Garbage Collector Called!"
 
 
-@app.route("/testing", methods=["GET", "POST"])
-def testing():
+@app.route("/test", methods=["GET", "POST"])
+def testing(json=True):
     test = { }
     for credit in request.json.get("creditos"):
         t = Test(None, credit)
         test[credit] = (t.make_test(True))
+    if json:
+        return jsonify(test)
+    else:
+        return test
+
+
+@app.route("/test/resumen", methods=["GET", "POST"])
+def test_resume():
+    tests = testing(False)
+    total_correct_entities = 0
+    total_incorrect_entities = 0
+    total_correct_pages = 0
+    total_incorrect_pages = 0
+    entities = { } 
+    for key, value in tests.items():
+        total_correct_entities = total_correct_entities+value["entidades_correctas"]
+        total_incorrect_entities = total_incorrect_entities+value["entidades_incorrectas"]
+        total_correct_pages = total_correct_pages+value["paginas_correctas"]
+        total_incorrect_pages = total_incorrect_pages+value["paginas_incorrectas"]
+        for key_e in value["entidades"]:
+            try:
+                entities[key_e] = entities[key_e] + 1
+            except KeyError:
+                entities[key_e] = 1
     
-    return jsonify(test)
+    percent_correct_entities = total_correct_entities / (total_correct_entities+total_incorrect_entities)
+    percent_correct_pages = total_correct_pages / (total_correct_pages+total_incorrect_pages)
+
+    resume = { }
+    resume["total_creditos_analizados"] = len(tests)
+    resume["total_entidades_correctad"] = total_correct_entities
+    resume["total_entidades_incorrectas"] = total_incorrect_entities
+    resume["total_paginas_correctas"] = total_correct_pages
+    resume["total_paginas_incorrectas"] = total_incorrect_pages
+    resume["porcentaje_entidades_correctas"] = percent_correct_entities
+    resume["porcentaje_paginas_correctas"] = percent_correct_pages
+    resume["entidades_incorrectas"] = entities
+    
+    return jsonify(resume)
+
 
 @app.route('/download/<path:filename>', methods=['GET', 'POST'])
 def download(filename):

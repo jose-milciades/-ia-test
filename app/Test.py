@@ -83,7 +83,7 @@ class Test:
         result["porcentaje_entidades_correctas"] = correct_text[0]/(correct_text[0]+correct_text[1])
         result["paginas_correctas"] = correct_pages[0]
         result["paginas_incorrectas"] = correct_pages[1]
-        result["porcentaje_paginas_incorrectas"] = correct_pages[0]/(correct_pages[0]+correct_pages[1])
+        result["porcentaje_paginas_correctas"] = correct_pages[0]/(correct_pages[0]+correct_pages[1])
         result["entidades"] = self.put_bad_entities(tabla_entidades3, False)
 
         self.save_in_excel(tabla_entidades3, result)
