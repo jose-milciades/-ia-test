@@ -5,7 +5,7 @@ from app.Log import Log
 import json
 
 class Test:
-    def __init__(self, cod_demanda, num_credito, name_excel_results=None):
+    def __init__(self, cod_demanda, num_credito, send_with_correct_text, name_excel_results=None):
         self.cod_demanda = cod_demanda
         self.num_credito = num_credito
         if name_excel_results == None:
@@ -13,6 +13,7 @@ class Test:
         else:
             self.name_excel_results = name_excel_results
         self.db = Database(False)
+        self. send_with_correct_text = send_with_correct_text
         
 
     def make_test(self, with_num):
@@ -84,7 +85,7 @@ class Test:
         result["paginas_correctas"] = correct_pages[0]
         result["paginas_incorrectas"] = correct_pages[1]
         result["porcentaje_paginas_correctas"] = correct_pages[0]/(correct_pages[0]+correct_pages[1])
-        result["entidades"] = self.put_bad_entities(tabla_entidades3, False)
+        result["entidades"] = self.put_entities(tabla_entidades3, self.send_with_correct_text, False)
 
         self.save_in_excel(tabla_entidades3, result)
         
@@ -146,9 +147,10 @@ class Test:
         Log.i(__name__, f"False: {false}")
         return true, false
 
-    def put_bad_entities(self, df, send_empty_results):
+    def put_entities(self, df, send_with_correct_text, send_empty_results):
         entities = { }
-        df = df[df["texto_es_correcto"]==False]
+        if not send_with_correct_text:
+            df = df[df["texto_es_correcto"]==False]
         for index, row in df.iterrows():
             if not((send_empty_results==False) and (row['valor_real'] == "" or row['valor_real'] == "0")):
                 entities[row["entidad"]] = { }
