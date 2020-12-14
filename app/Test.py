@@ -3,6 +3,7 @@ import numpy as np
 from app.Database import Database
 from app.Log import Log
 import json
+import unidecode
 
 class Test:
     def __init__(self, cod_demanda, num_credito, send_with_correct_text, name_excel_results=None):
@@ -25,7 +26,13 @@ class Test:
             df = self.db.leer_escritura(self.cod_demanda, None)
 
         id_cat_tipo_demanda = df.iloc[0]["id_cat_tipo_demanda"]
-        json_datos_encontrados = json.loads(df.iloc[0]["json_datos_fundamentales"])
+        json_datos_encontrados = {"datoFundamental": []}
+        for json_ in list(df["json_datos_fundamentales"].unique()):
+            aux_json = json.loads(json_)
+            if len(aux_json["datoFundamental"])>0:
+                for dato in aux_json["datoFundamental"]:
+                    json_datos_encontrados["datoFundamental"].append(dato)
+        #json_datos_encontrados = json.loads(df.iloc[0]["json_datos_fundamentales"])
         tabla_entidades = self.get_tabla_entidades(id_cat_tipo_demanda)
         tabla_entidades["valor_encontrado"] = tabla_entidades["cod_dato_fundamental"].apply(lambda x: self.get_valor_encontrado(json_datos_encontrados, x))
         tabla_entidades["pagina_encontrado"] = tabla_entidades["cod_dato_fundamental"].apply(lambda x: self.get_pagina_valor_encontrado(json_datos_encontrados, x))
@@ -64,7 +71,7 @@ class Test:
         tabla_entidades3["pagina_es_correcta"] = False
 
         for index, row in tabla_entidades3.iterrows():
-            if str(row['valor_encontrado']) == str(row['valor_real']):
+            if unidecode.unidecode(str(row['valor_encontrado'])) == unidecode.unidecode(str(row['valor_real'])):
                 if str(row['valor_real']).rstrip() != "":
                     tabla_entidades3.at[index,'texto_es_correcto'] = True
                     
@@ -91,14 +98,13 @@ class Test:
         
         return result
     
-    def get_tabla_entidades(self, id_cat_tipo_demanda, activo=True, modelo_ner="ner-escritura"):
+    def get_tabla_entidades(self, id_cat_tipo_demanda, activo=True):
         df1 = self.db.get_dato_fundamental(None, activo=activo)[["id_cat_dato_fundamental", "cod_dato_fundamental","entidad", "des_dato_fundamental","modelo_ner"]]
         df2 = self.db.get_demanda_dato_fundamental(id_cat_tipo_demanda)
         df3 = df2.merge(df1, on='id_cat_dato_fundamental')
         df3.sort_values(by=['des_dato_fundamental'], inplace=True)
-        df4 = df3[df3["modelo_ner"]==modelo_ner].drop(columns=["modelo_ner"])
         
-        return df4
+        return df3
 
     def get_valor_encontrado(self, json_datos_encontrados, cod_dato_fundamental):
         for dato_fundamental in json_datos_encontrados["datoFundamental"]:
@@ -149,17 +155,36 @@ class Test:
 
     def put_entities(self, df, send_with_correct_text, send_empty_results):
         entities = { }
+        
+        for model in list(df["modelo_ner"].unique()):
+            entities[model] = { }
+            correct_text = self.value_result_counts(df[df["modelo_ner"]==model], "texto_es_correcto")
+            entities[model]["entidades_correctas"] = correct_text[0]
+            entities[model]["entidades_incorrectas"] = correct_text[1]
+            correct_pages = self.value_result_counts(df[df["modelo_ner"]==model], "pagina_es_correcta")
+            entities[model]["paginas_correctas"] = correct_text[0]
+            entities[model]["paginas_incorrectas"] = correct_text[1]
+            try:
+                entities[model]["porcentaje_entidades_correctas"] = correct_text[0]/(correct_text[0]+correct_text[1])
+            except ZeroDivisionError:
+                entities[model]["porcentaje_entidades_correctas"] = 1
+            try:
+                entities[model]["porcentaje_paginas_correctas"] = correct_pages[0]/(correct_pages[0]+correct_pages[1])
+            except ZeroDivisionError:
+                entities[model]["porcentaje_paginas_correctas"] = 1
+
         if not send_with_correct_text:
             df = df[df["texto_es_correcto"]==False]
+
         for index, row in df.iterrows():
             if not((send_empty_results==False) and (row['valor_real'] == "" or row['valor_real'] == "0")):
-                entities[row["entidad"]] = { }
-                entities[row["entidad"]]["valor_encontrado"] = row["valor_encontrado"]
-                entities[row["entidad"]]["valor_real"] = row["valor_real"]
-                entities[row["entidad"]]["pagina_encontrado"] = row["pagina_encontrado"]
-                entities[row["entidad"]]["pagina_real"] = row["pagina_real"]
-                entities[row["entidad"]]["texto_es_correcto"] = row["texto_es_correcto"]
-                entities[row["entidad"]]["pagina_es_correcta"] = row["pagina_es_correcta"]
+                entities[row["modelo_ner"]][row["entidad"]] = { }
+                entities[row["modelo_ner"]][row["entidad"]]["valor_encontrado"] = row["valor_encontrado"]
+                entities[row["modelo_ner"]][row["entidad"]]["valor_real"] = row["valor_real"]
+                entities[row["modelo_ner"]][row["entidad"]]["pagina_encontrado"] = row["pagina_encontrado"]
+                entities[row["modelo_ner"]][row["entidad"]]["pagina_real"] = row["pagina_real"]
+                entities[row["modelo_ner"]][row["entidad"]]["texto_es_correcto"] = row["texto_es_correcto"]
+                entities[row["modelo_ner"]][row["entidad"]]["pagina_es_correcta"] = row["pagina_es_correcta"]
         
         return entities
 

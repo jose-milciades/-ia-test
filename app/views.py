@@ -50,25 +50,53 @@ def test_resume():
         total_incorrect_entities = total_incorrect_entities+value["entidades_incorrectas"]
         total_correct_pages = total_correct_pages+value["paginas_correctas"]
         total_incorrect_pages = total_incorrect_pages+value["paginas_incorrectas"]
-        for key_e, value_e in value["entidades"].items():
-            if not key_e in entities:
-                entities[key_e] = { }
-            if value_e["texto_es_correcto"]:
-                if not "correctos" in entities[key_e]:
-                    entities[key_e]["correctos"] = 1
+        for model_ner, values_model in value["entidades"].items():
+            if not model_ner in entities:
+                entities[model_ner] = { }
+            del value["entidades"][model_ner]["entidades_correctas"]
+            del value["entidades"][model_ner]["entidades_incorrectas"]
+            del value["entidades"][model_ner]["paginas_correctas"]
+            del value["entidades"][model_ner]["paginas_incorrectas"]
+            del value["entidades"][model_ner]["porcentaje_entidades_correctas"]
+            del value["entidades"][model_ner]["porcentaje_paginas_correctas"]
+            for key_e, value_e in value["entidades"][model_ner].items():
+                if not key_e in entities[model_ner]:
+                    entities[model_ner][key_e] = { }
+                if value_e["texto_es_correcto"]:
+                    if not "correctos" in entities[model_ner][key_e]:
+                        entities[model_ner][key_e]["correctos"] = 1
+                    else:
+                        entities[model_ner][key_e]["correctos"] = entities[model_ner][key_e]["correctos"] + 1
                 else:
-                    entities[key_e]["correctos"] = entities[key_e]["correctos"] + 1
-            else:
-                if not "incorrectos" in entities[key_e]:
-                    entities[key_e]["incorrectos"] = 1
+                    if not "incorrectos" in entities[model_ner][key_e]:
+                        entities[model_ner][key_e]["incorrectos"] = 1
+                    else:
+                        entities[model_ner][key_e]["incorrectos"] = entities[model_ner][key_e]["incorrectos"] + 1
+                if not "correctos" in entities[model_ner][key_e]:
+                    entities[model_ner][key_e]["porcentaje_correcto"] = 0
+                elif not "incorrectos" in entities[model_ner][key_e]:
+                    entities[model_ner][key_e]["porcentaje_correcto"] = 1
                 else:
-                    entities[key_e]["incorrectos"] = entities[key_e]["incorrectos"] + 1
-            if not "correctos" in entities[key_e]:
-                entities[key_e]["porcentaje_correcto"] = 0
-            elif not "incorrectos" in entities[key_e]:
-                entities[key_e]["porcentaje_correcto"] = 1
-            else:
-                entities[key_e]["porcentaje_correcto"] = entities[key_e]["correctos"]/(entities[key_e]["correctos"]+entities[key_e]["incorrectos"])
+                    entities[model_ner][key_e]["porcentaje_correcto"] = (
+                        entities[model_ner][key_e]["correctos"]/
+                        (entities[model_ner][key_e]["correctos"]+entities[model_ner][key_e]["incorrectos"])
+                    )
+
+    for model_ner, values_model in entities.items():
+        correct = 0
+        incorrect = 0
+        for entitie, value in values_model.items():
+            if "correctos" in value:
+                correct = correct+value["correctos"]
+            if "incorrectos" in value:
+                incorrect = incorrect+value["incorrectos"]
+        entities[model_ner]["entidades_correctas"] = correct
+        entities[model_ner]["entidades_incorrectas"] = incorrect
+        try:
+            entities[model_ner]["porcentaje_entidades_correctas"] = correct/(correct+incorrect)
+        except ZeroDivisionError:
+            entities[model_ner]["porcentaje_entidades_correctas"] = 1
+
     
     percent_correct_entities = total_correct_entities / (total_correct_entities+total_incorrect_entities)
     percent_correct_pages = total_correct_pages / (total_correct_pages+total_incorrect_pages)
@@ -76,13 +104,13 @@ def test_resume():
     resume = { }
     resume["creditos_analizados"] = credits_
     resume["total_creditos_analizados"] = len(tests)
-    resume["total_entidades_correctad"] = total_correct_entities
+    resume["total_entidades_correctas"] = total_correct_entities
     resume["total_entidades_incorrectas"] = total_incorrect_entities
     resume["total_paginas_correctas"] = total_correct_pages
     resume["total_paginas_incorrectas"] = total_incorrect_pages
     resume["porcentaje_entidades_correctas"] = percent_correct_entities
     resume["porcentaje_paginas_correctas"] = percent_correct_pages
-    resume["entidades_incorrectas"] = entities
+    resume["entidades"] = entities
     
     return jsonify(resume)
 

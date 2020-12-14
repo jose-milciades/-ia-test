@@ -29,7 +29,10 @@ class Database:
             inner join dato_relevante on documento_procesado.id_documento_procesado=(dato_relevante.id_documento_procesado)
             where dato_relevante.num_credito=\''''+str(num_credito)+'\'')
 
-        return df_db.iloc[0]['cod_demanda']
+        try:
+            return df_db.iloc[0]['cod_demanda']
+        except IndexError:
+            return None
 
     def leer_escritura(self, cod_demanda, num_credito):
         where = ""
@@ -42,12 +45,12 @@ class Database:
             from demanda 
             inner join documento_procesado on demanda.id_demanda=documento_procesado.id_demanda
             inner join pagina_procesada on documento_procesado.id_documento_procesado=pagina_procesada.id_documento_procesado
-            where documento_procesado.id_cat_tipo_documento=1 '''+ where
+            '''+ where
         )
         df_db = self.query(command)
         df_db['texto_procesado'] = df_db['texto_procesado'].apply(lambda x: str(x).replace("\n", " ").replace("\"","'"))
         df_db = df_db.sort_values(by=['cod_demanda','numero_pagina'])
-        df_db.drop_duplicates(subset ="numero_pagina", inplace = True)
+        df_db.drop_duplicates(subset =["numero_pagina", "id_documento_procesado"], inplace = True)
         df_db.reset_index(drop=True, inplace=True)
 
         return df_db
