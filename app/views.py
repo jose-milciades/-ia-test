@@ -5,6 +5,8 @@ from app.Test import Test
 import os
 from zipfile import ZipFile
 from datetime import datetime
+from dotenv import load_dotenv
+import json
 
 
 @app.route("/")
@@ -24,12 +26,13 @@ def garbage_collector():
 
 
 @app.route("/test", methods=["GET", "POST"])
-def testing(json=True, send_with_correct_text=False):
+def testing(json_return=True, send_with_correct_text=False):
     test = { }
+    t = None
     for credit in request.json.get("creditos"):
-        t = Test(None, credit, send_with_correct_text)
-        test[credit] = (t.make_test(True))
-    if json:
+        t = Test(credit, send_with_correct_text)
+        test[credit] = (json.loads(t.__repr__()))
+    if json_return:
         return jsonify(test)
     else:
         return test

@@ -1,15 +1,25 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine 
 import pandas as pd
+import os
+from dotenv import load_dotenv
+from app.Log import Log
 
-class Database:
-    def __init__(self, endpoint_client):
-        if endpoint_client:
-            self.engine = create_engine('postgresql://postgres:securep@sshere@192.168.0.22:5432/robotLectura')
-        else: 
-            self.engine = create_engine('postgresql://postgres:securep@sshere@192.168.0.11:5432/robotLectura')
+load_dotenv()
+
+
+class DatabaseRobot:
+    _port = os.environ.get("PORT_POSTGRESQL")
+    _password = os.environ.get("PASSWORD_POSTGRESQL")
+    _user_db = os.environ.get("USER_POSTGRESQL")
+    _type_db = os.environ.get("TYPE_DB")
+    endpoint_client = os.environ.get("ENDPOINT_CLIENT")
+    endpoint_test = os.environ.get("ENDPOINT_TEST")
+    database_robot = os.environ.get("DATABASE_ROBOT_LECTURA")
+    def __init__(self, endpoint, database, port=_port, password=_password, user_db=_user_db, type_db=_type_db):
+        Log.i(__name__, "Creating engine")
+        self.engine = create_engine(f'{type_db}://{user_db}:{password}@{endpoint}:{port}/{database}')
 
     def query(self, command):
-
         return pd.read_sql(command, self.engine)
 
     def get_empty_entities(self):
@@ -96,3 +106,33 @@ class Database:
         )
 
         return df_db    
+
+    ## testing ## 
+
+    def save_credito_testeado(self, num_credito):
+        self.query(
+            """
+                INSERT INTO "credito-testeado"
+                (credito, fecha)
+                VALUES('"""+str(num_credito)+"""', now());
+            """
+        )
+
+    def save_resultado(self, result):
+        return self.query(
+            """
+                INSERT INTO resultado
+                (   
+                    entidades_correctas, entidades_incorrectas, 
+                    num_credito, paginas_correctas, 
+                    paginas_incorrectas, porcentaje_entidades_correctas, 
+                    porcentaje_paginas_correctas
+                )
+                VALUES(
+                    """+result["entidades_correctas"]+""", """+result["entidades_incorrectas"]+""", 
+                    '"""+result["num_credito"]+"""', """+result["paginas_correctas"]+""",
+                    """+result["paginas_incorrectas"]+""", """+result["porcentaje_entidades_correctas"]+""",
+                    """+result["porcentaje_paginas_correctas"]+"""
+                );
+            """
+        )

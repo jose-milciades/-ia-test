@@ -1,29 +1,38 @@
 import pandas as pd
 import numpy as np 
-from app.Database import Database
+from app import database_test_robot
+from app.models.Credito_testeado import Credito_testeado
+from app.models.Resultado import Resultado
+from app.models.Modelo_ner import Modelo_ner
+from app.models.Entidad import Entidad
 from app.Log import Log
 import json
 import unidecode
+from app.database.sqlAlchemyORM import db
+from datetime import datetime
 
 class Test:
-    def __init__(self, cod_demanda, num_credito, send_with_correct_text, name_excel_results=None):
-        self.cod_demanda = cod_demanda
-        self.num_credito = num_credito
+    credito_testeado: Credito_testeado
+    resultado: Resultado
+    modelos_ner: [ Modelo_ner ]
+    entidades: [ Entidad ]
+    def __init__(self, num_credito, send_with_correct_text, name_excel_results=None, make_test=True):
+        self.credito_testeado = Credito_testeado(num_credito)
         if name_excel_results == None:
             self.name_excel_results = str(num_credito)+".xlsx"
         else:
             self.name_excel_results = name_excel_results
-        self.db = Database(False)
-        self. send_with_correct_text = send_with_correct_text
-        
+        self.db = database_test_robot
+        self.send_with_correct_text = send_with_correct_text
+        self.modelos_ner = [ ]
+        self.entidades = [ ]
+        self.modelos_entidades = { }
+        if make_test:
+            self.make_test()
 
-    def make_test(self, with_num):
-        if with_num:
-            Log.i(__name__, f"Empezando test para el número de crédito: {self.num_credito}")
-            df = self.db.leer_escritura(None, self.num_credito)
-        else: 
-            Log.i(__name__, f"Empezando test para el código de demanda: {self.cod_demanda}")
-            df = self.db.leer_escritura(self.cod_demanda, None)
+    def make_test(self):
+        Log.i(__name__, f"Empezando test para el número de crédito: {self.credito_testeado.credito}")
+        df = self.db.leer_escritura(None, self.credito_testeado.credito)
 
         id_cat_tipo_demanda = df.iloc[0]["id_cat_tipo_demanda"]
         json_datos_encontrados = {"datoFundamental": []}
@@ -83,20 +92,16 @@ class Test:
 
         correct_text = self.value_result_counts(tabla_entidades3, "texto_es_correcto")
         correct_pages = self.value_result_counts(tabla_entidades3, "pagina_es_correcta")
-        
-        result = {}
-        result["num_credito"] = self.num_credito
-        result["entidades_correctas"] = correct_text[0]
-        result["entidades_incorrectas"] = correct_text[1]
-        result["porcentaje_entidades_correctas"] = correct_text[0]/(correct_text[0]+correct_text[1])
-        result["paginas_correctas"] = correct_pages[0]
-        result["paginas_incorrectas"] = correct_pages[1]
-        result["porcentaje_paginas_correctas"] = correct_pages[0]/(correct_pages[0]+correct_pages[1])
-        result["entidades"] = self.put_entities(tabla_entidades3, self.send_with_correct_text, False)
 
-        self.save_in_excel(tabla_entidades3, result)
-        
-        return result
+        self.resultado = Resultado(entidades_correctas=correct_text[0], entidades_incorrectas=correct_text[1],
+                                paginas_correctas=correct_pages[0], paginas_incorrectas=correct_pages[1], 
+                                porcentaje_entidades_correctas=correct_text[0]/(correct_text[0]+correct_text[1]), 
+                                porcentaje_paginas_correctas=correct_pages[0]/(correct_pages[0]+correct_pages[1]), 
+                                id_credito_testeado=self.credito_testeado.id)
+
+        self.modelos_entidades["entidades"] = self.put_entities(tabla_entidades3, self.send_with_correct_text, False)
+        self.save_in_excel(tabla_entidades3, json.loads(self.__repr__()))
+        self.save_all_models()
     
     def get_tabla_entidades(self, id_cat_tipo_demanda, activo=True):
         df1 = self.db.get_dato_fundamental(None, activo=activo)[["id_cat_dato_fundamental", "cod_dato_fundamental","entidad", "des_dato_fundamental","modelo_ner"]]
@@ -157,40 +162,59 @@ class Test:
         entities = { }
         
         for model in list(df["modelo_ner"].unique()):
-            entities[model] = { }
             correct_text = self.value_result_counts(df[df["modelo_ner"]==model], "texto_es_correcto")
-            entities[model]["entidades_correctas"] = correct_text[0]
-            entities[model]["entidades_incorrectas"] = correct_text[1]
             correct_pages = self.value_result_counts(df[df["modelo_ner"]==model], "pagina_es_correcta")
-            entities[model]["paginas_correctas"] = correct_text[0]
-            entities[model]["paginas_incorrectas"] = correct_text[1]
             try:
-                entities[model]["porcentaje_entidades_correctas"] = correct_text[0]/(correct_text[0]+correct_text[1])
+                porcentaje_entidades_correctas = correct_text[0]/(correct_text[0]+correct_text[1])
             except ZeroDivisionError:
-                entities[model]["porcentaje_entidades_correctas"] = 1
+                porcentaje_entidades_correctas = 1
             try:
-                entities[model]["porcentaje_paginas_correctas"] = correct_pages[0]/(correct_pages[0]+correct_pages[1])
+                porcentaje_paginas_correctas = correct_pages[0]/(correct_pages[0]+correct_pages[1])
             except ZeroDivisionError:
-                entities[model]["porcentaje_paginas_correctas"] = 1
+                porcentaje_paginas_correctas = 1
 
-        if not send_with_correct_text:
-            df = df[df["texto_es_correcto"]==False]
-
+            modelo_ner = Modelo_ner(modelo_ner=model, entidades_correctas=correct_text[0], entidades_incorrectas=correct_text[1],
+                                    paginas_correctas=correct_text[0], paginas_incorrectas=correct_text[1], 
+                                    porcentaje_entidades_correctas=porcentaje_entidades_correctas, 
+                                    porcentaje_paginas_correctas=porcentaje_paginas_correctas, id_resultado=self.resultado.id)
+            self.modelos_ner.append(modelo_ner)
+        
         for index, row in df.iterrows():
             if not((send_empty_results==False) and (row['valor_real'] == "" or row['valor_real'] == "0")):
-                entities[row["modelo_ner"]][row["entidad"]] = { }
-                entities[row["modelo_ner"]][row["entidad"]]["valor_encontrado"] = row["valor_encontrado"]
-                entities[row["modelo_ner"]][row["entidad"]]["valor_real"] = row["valor_real"]
-                entities[row["modelo_ner"]][row["entidad"]]["pagina_encontrado"] = row["pagina_encontrado"]
-                entities[row["modelo_ner"]][row["entidad"]]["pagina_real"] = row["pagina_real"]
-                entities[row["modelo_ner"]][row["entidad"]]["texto_es_correcto"] = row["texto_es_correcto"]
-                entities[row["modelo_ner"]][row["entidad"]]["pagina_es_correcta"] = row["pagina_es_correcta"]
+                model = None
+                for modelo in self.modelos_ner:
+                    if modelo.modelo_ner == row["modelo_ner"]:
+                        model = modelo
+                        break
+                self.entidades.append(
+                    Entidad(entidad=row["entidad"], pagina_encontrado=row["pagina_encontrado"], 
+                            pagina_es_correcta=row["pagina_es_correcta"], pagina_real=row["pagina_real"], 
+                            texto_es_correcto=row["texto_es_correcto"], valor_encontrado=row["valor_encontrado"],
+                            valor_real=row["valor_real"], id_modelo_ner=model.id)
+                )
         
+        for modelo in self.modelos_ner:
+            modelo_dict = json.loads(str(modelo))
+            for entidad in self.entidades:
+                if entidad.id_modelo_ner == modelo.id:
+                    if (not send_with_correct_text and not entidad.texto_es_correcto) or (send_with_correct_text):
+                        entidad_dict = json.loads(str(entidad))
+                        modelo_dict[modelo.modelo_ner][entidad.entidad] = entidad_dict
+            entities = {**entities, **modelo_dict}
         return entities
 
     def save_in_excel(self, df, result):
         df2 = pd.DataFrame.from_dict(result, orient='index')
-        with pd.ExcelWriter("app/results/reviewed/"+self.num_credito+'.xlsx') as writer:  
+        with pd.ExcelWriter("app/results/reviewed/"+self.credito_testeado.credito+'.xlsx') as writer:  
             df.to_excel(writer, sheet_name='table')
             df2.to_excel(writer, sheet_name='results')
+
+    def save_all_models(self):
+        db.session.commit()
+        Log.i(__name__, "Todos los modelos han sido almacenados")
+
+    def __repr__(self):
+        resultado = json.loads(str(self.resultado))
+        result = {**resultado, **self.modelos_entidades}
+        return json.dumps(result)
 

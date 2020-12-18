@@ -5,6 +5,7 @@ import py_eureka_client.eureka_client as eureka_client
 import random
 import logging
 import gc
+from urllib.error import URLError
 
 logging.getLogger().setLevel(logging.INFO)
 load_dotenv()
