@@ -98,7 +98,6 @@ class Test:
                                 porcentaje_entidades_correctas=correct_text[0]/(correct_text[0]+correct_text[1]), 
                                 porcentaje_paginas_correctas=correct_pages[0]/(correct_pages[0]+correct_pages[1]), 
                                 id_credito_testeado=self.credito_testeado.id)
-
         self.modelos_entidades["entidades"] = self.put_entities(tabla_entidades3, self.send_with_correct_text, False)
         self.save_in_excel(tabla_entidades3, json.loads(self.__repr__()))
         self.save_all_models()

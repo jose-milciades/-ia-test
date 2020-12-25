@@ -27,6 +27,7 @@ class Resultado(db.Model):
 
     def __repr__(self):
         result = {}
+        result["id_credito_testeado"] = self.id_credito_testeado
         result["entidades_correctas"] = self.entidades_correctas
         result["entidades_incorrectas"] = self.entidades_incorrectas
         result["porcentaje_entidades_correctas"] = self.porcentaje_entidades_correctas
