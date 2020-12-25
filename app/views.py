@@ -52,6 +52,7 @@ def download(filename):
     directory = "results/reviewed/"+filename+".xlsx"
     return send_file(directory, as_attachment=True)
 
+
 @app.route('/test/get_creditos_by_id', methods=['POST'])
 def get_credito_by_id(json_return=True):
     test = { }
@@ -63,3 +64,11 @@ def get_credito_by_id(json_return=True):
         return jsonify(test)
     else:
         return test
+
+
+@app.route("/test/get_prueba_realizada_by_id/<path:id>", methods=["GET", "POST"])
+def get_prueba_realizada_by_id(id):
+    #tests = testing(False, True)
+    resume = Test_resume(None, id_prueba_realizada=id)
+
+    return jsonify(resume.resume)

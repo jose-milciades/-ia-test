@@ -1,21 +1,37 @@
 from app.Test import Test
 from app.models.Prueba_realizada import Prueba_realizada
 from app.models.Creditos_prueba_realizada import Creditos_prueba_realizada
+from app.models.Credito_testeado import Credito_testeado
 import json
 from app.Log import Log
 from app.database.sqlAlchemyORM import db
+from app import views
 
 class Test_resume:
     tests: { Test }
     resume = { }
     
-    def __init__(self, tests, make_resume=True, save_resume=True):
-        self.tests = tests
-        if make_resume:
-            self.resumen()
-        if save_resume:
-            self.save()
-    
+    def __init__(self, tests, make_resume=True, save_resume=True, id_prueba_realizada=None):
+        if tests is not None:
+            self.tests = tests
+            if make_resume:
+                self.resumen()
+            if save_resume:
+                self.save()
+        elif id_prueba_realizada is not None:
+            prueba_realizada = Prueba_realizada.query.filter_by(id=id_prueba_realizada).first()
+            creditos_prueba_realizada = Creditos_prueba_realizada.query.filter_by(id_prueba_realizada=id_prueba_realizada).all()
+            creditos = [ ]
+            self.tests = { }
+            for credito_prueba_realizada in creditos_prueba_realizada:
+                creditos.append(Credito_testeado.query.filter_by(id=credito_prueba_realizada.id_credito_testeado).first())
+            t = None
+            for credito in creditos:
+                t = Test(None, True, id_credito_testeado=credito.id)
+                self.tests[str(t.credito_testeado.credito)+"-"+str(credito.id)] = (json.loads(t.__repr__()))
+            if make_resume:
+                self.resumen()
+
     def resumen(self):
         total_correct_entities = 0
         total_incorrect_entities = 0
