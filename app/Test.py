@@ -16,19 +16,33 @@ class Test:
     resultado: Resultado
     modelos_ner: [ Modelo_ner ]
     entidades: [ Entidad ]
-    def __init__(self, num_credito, send_with_correct_text, name_excel_results=None, make_test=True):
-        self.credito_testeado = Credito_testeado(num_credito)
-        if name_excel_results == None:
-            self.name_excel_results = str(num_credito)+".xlsx"
-        else:
-            self.name_excel_results = name_excel_results
-        self.db = database_test_robot
+    def __init__(self, num_credito, send_with_correct_text, name_excel_results=None, make_test=True, id_credito_testeado=None):
         self.send_with_correct_text = send_with_correct_text
-        self.modelos_ner = [ ]
-        self.entidades = [ ]
         self.modelos_entidades = { }
-        if make_test:
-            self.make_test()
+        if id_credito_testeado is None:
+            self.credito_testeado = Credito_testeado(num_credito)
+            if name_excel_results == None:
+                self.name_excel_results = str(num_credito)+".xlsx"
+            else:
+                self.name_excel_results = name_excel_results
+            self.db = database_test_robot
+            self.modelos_ner = [ ]
+            self.entidades = [ ]
+            if make_test:
+                self.make_test()
+        else:
+            self.read_test(id_credito_testeado)
+
+    def read_test(self, id_credito_testeado):
+        self.credito_testeado = Credito_testeado.query.filter_by(id=id_credito_testeado).first()
+        self.resultado = Resultado.query.filter_by(id_credito_testeado=id_credito_testeado).first()
+        self.modelos_ner = Modelo_ner.query.filter_by(id_resultado=self.resultado.id).all()
+        self.entidades = [ ]
+        modelos_ner_id = [ ]
+        for modelo_ner in self.modelos_ner:
+            modelos_ner_id.append(modelo_ner.id)
+        self.entidades = Entidad.query.filter(Entidad.id_modelo_ner.in_(modelos_ner_id)).all()
+        self.modelos_entidades["entidades"] = self.put_entities(None, self.send_with_correct_text, False)
 
     def make_test(self):
         Log.i(__name__, f"Empezando test para el número de crédito: {self.credito_testeado.credito}")
@@ -160,38 +174,39 @@ class Test:
     def put_entities(self, df, send_with_correct_text, send_empty_results):
         entities = { }
         
-        for model in list(df["modelo_ner"].unique()):
-            correct_text = self.value_result_counts(df[df["modelo_ner"]==model], "texto_es_correcto")
-            correct_pages = self.value_result_counts(df[df["modelo_ner"]==model], "pagina_es_correcta")
-            try:
-                porcentaje_entidades_correctas = correct_text[0]/(correct_text[0]+correct_text[1])
-            except ZeroDivisionError:
-                porcentaje_entidades_correctas = 1
-            try:
-                porcentaje_paginas_correctas = correct_pages[0]/(correct_pages[0]+correct_pages[1])
-            except ZeroDivisionError:
-                porcentaje_paginas_correctas = 1
+        if df is not None:
+            for model in list(df["modelo_ner"].unique()):
+                correct_text = self.value_result_counts(df[df["modelo_ner"]==model], "texto_es_correcto")
+                correct_pages = self.value_result_counts(df[df["modelo_ner"]==model], "pagina_es_correcta")
+                try:
+                    porcentaje_entidades_correctas = correct_text[0]/(correct_text[0]+correct_text[1])
+                except ZeroDivisionError:
+                    porcentaje_entidades_correctas = 1
+                try:
+                    porcentaje_paginas_correctas = correct_pages[0]/(correct_pages[0]+correct_pages[1])
+                except ZeroDivisionError:
+                    porcentaje_paginas_correctas = 1
 
-            modelo_ner = Modelo_ner(modelo_ner=model, entidades_correctas=correct_text[0], entidades_incorrectas=correct_text[1],
-                                    paginas_correctas=correct_text[0], paginas_incorrectas=correct_text[1], 
-                                    porcentaje_entidades_correctas=porcentaje_entidades_correctas, 
-                                    porcentaje_paginas_correctas=porcentaje_paginas_correctas, id_resultado=self.resultado.id)
-            self.modelos_ner.append(modelo_ner)
+                modelo_ner = Modelo_ner(modelo_ner=model, entidades_correctas=correct_text[0], entidades_incorrectas=correct_text[1],
+                                        paginas_correctas=correct_text[0], paginas_incorrectas=correct_text[1], 
+                                        porcentaje_entidades_correctas=porcentaje_entidades_correctas, 
+                                        porcentaje_paginas_correctas=porcentaje_paginas_correctas, id_resultado=self.resultado.id)
+                self.modelos_ner.append(modelo_ner)
         
-        for index, row in df.iterrows():
-            if not((send_empty_results==False) and (row['valor_real'] == "" or row['valor_real'] == "0")):
-                model = None
-                for modelo in self.modelos_ner:
-                    if modelo.modelo_ner == row["modelo_ner"]:
-                        model = modelo
-                        break
-                self.entidades.append(
-                    Entidad(entidad=row["entidad"], pagina_encontrado=row["pagina_encontrado"], 
-                            pagina_es_correcta=row["pagina_es_correcta"], pagina_real=row["pagina_real"], 
-                            texto_es_correcto=row["texto_es_correcto"], valor_encontrado=row["valor_encontrado"],
-                            valor_real=row["valor_real"], id_modelo_ner=model.id)
-                )
-        
+            if len(self.entidades) == 0:
+                for index, row in df.iterrows():
+                    if not((send_empty_results==False) and (row['valor_real'] == "" or row['valor_real'] == "0")):
+                        model = None
+                        for modelo in self.modelos_ner:
+                            if modelo.modelo_ner == row["modelo_ner"]:
+                                model = modelo
+                                break
+                        self.entidades.append(
+                            Entidad(entidad=row["entidad"], pagina_encontrado=row["pagina_encontrado"], 
+                                    pagina_es_correcta=row["pagina_es_correcta"], pagina_real=row["pagina_real"], 
+                                    texto_es_correcto=row["texto_es_correcto"], valor_encontrado=row["valor_encontrado"],
+                                    valor_real=row["valor_real"], id_modelo_ner=model.id)
+                        )
         for modelo in self.modelos_ner:
             modelo_dict = json.loads(str(modelo))
             for entidad in self.entidades:

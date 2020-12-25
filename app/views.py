@@ -49,6 +49,17 @@ def test_resume():
 
 @app.route('/download/<path:filename>', methods=['GET', 'POST'])
 def download(filename):
-    #http://localhost:4503/download/809035316
     directory = "results/reviewed/"+filename+".xlsx"
     return send_file(directory, as_attachment=True)
+
+@app.route('/test/get_creditos_by_id', methods=['POST'])
+def get_credito_by_id(json_return=True):
+    test = { }
+    t = None
+    for id in request.json.get("ids"):
+        t = Test(None, True, id_credito_testeado=id)
+        test[str(t.credito_testeado.credito)+"-"+str(id)] = (json.loads(t.__repr__()))
+    if json_return:
+        return jsonify(test)
+    else:
+        return test

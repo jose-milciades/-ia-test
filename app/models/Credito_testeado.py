@@ -15,6 +15,6 @@ class Credito_testeado(db.Model):
                 db.session.flush()
 
     def __repr__(self):
-        return "<Credito %r con fecha %r>" % self.credito, self.fecha
+        return (f"<Credito {self.credito} con fecha {self.fecha}>")
 
 #db.create_all()
