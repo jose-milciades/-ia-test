@@ -9,6 +9,7 @@ from app import views
 
 class Test_resume:
     tests: { Test }
+    id_prueba_realizada: int
     resume = { }
     
     def __init__(self, tests, make_resume=True, save_resume=True, id_prueba_realizada=None):
@@ -19,6 +20,7 @@ class Test_resume:
             if save_resume:
                 self.save()
         elif id_prueba_realizada is not None:
+            self.id_prueba_realizada = id_prueba_realizada
             prueba_realizada = Prueba_realizada.query.filter_by(id=id_prueba_realizada).first()
             creditos_prueba_realizada = Creditos_prueba_realizada.query.filter_by(id_prueba_realizada=id_prueba_realizada).all()
             creditos = [ ]
@@ -28,7 +30,7 @@ class Test_resume:
             t = None
             for credito in creditos:
                 t = Test(None, True, id_credito_testeado=credito.id)
-                self.tests[str(t.credito_testeado.credito)+"-"+str(credito.id)] = (json.loads(t.__repr__()))
+                self.tests[t.credito_testeado.credito] = (json.loads(t.__repr__()))
             if make_resume:
                 self.resumen()
 

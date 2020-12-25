@@ -8,6 +8,7 @@ from zipfile import ZipFile
 from datetime import datetime
 from dotenv import load_dotenv
 import json
+from app.Compare import Compare
 
 
 @app.route("/")
@@ -66,9 +67,19 @@ def get_credito_by_id(json_return=True):
         return test
 
 
-@app.route("/test/get_prueba_realizada_by_id/<path:id>", methods=["GET", "POST"])
-def get_prueba_realizada_by_id(id):
-    #tests = testing(False, True)
+@app.route("/test/get_prueba_realizada_by_id/<path:id>", methods=["GET"])
+def get_prueba_realizada_by_id(id, json_return=True):
     resume = Test_resume(None, id_prueba_realizada=id)
+    if json_return:
+        return jsonify(resume.resume)
+    else:
+        return resume
+
+
+@app.route("/test/compare_resumen/<path:old_id>/<path:new_id>", methods=["GET"])
+def compare_resumen(old_id, new_id):
+    old_resume = get_prueba_realizada_by_id(old_id, json_return=False)
+    new_resume = get_prueba_realizada_by_id(new_id, json_return=False)
+    resume = Compare(old_resume, new_resume)
 
     return jsonify(resume.resume)
