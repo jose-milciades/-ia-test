@@ -62,39 +62,71 @@ class Test_resume:
                     if not key_e in entities[model_ner]:
                         entities[model_ner][key_e] = { }
                     if value_e["texto_es_correcto"]:
-                        if not "correctos" in entities[model_ner][key_e]:
-                            entities[model_ner][key_e]["correctos"] = 1
+                        if not "entidades_correctas" in entities[model_ner][key_e]:
+                            entities[model_ner][key_e]["entidades_correctas"] = 1
                         else:
-                            entities[model_ner][key_e]["correctos"] = entities[model_ner][key_e]["correctos"] + 1
+                            entities[model_ner][key_e]["entidades_correctas"] = entities[model_ner][key_e]["entidades_correctas"] + 1
                     else:
-                        if not "incorrectos" in entities[model_ner][key_e]:
-                            entities[model_ner][key_e]["incorrectos"] = 1
+                        if not "entidades_incorrectas" in entities[model_ner][key_e]:
+                            entities[model_ner][key_e]["entidades_incorrectas"] = 1
                         else:
-                            entities[model_ner][key_e]["incorrectos"] = entities[model_ner][key_e]["incorrectos"] + 1
-                    if not "correctos" in entities[model_ner][key_e]:
-                        entities[model_ner][key_e]["porcentaje_correcto"] = 0
-                    elif not "incorrectos" in entities[model_ner][key_e]:
-                        entities[model_ner][key_e]["porcentaje_correcto"] = 1
+                            entities[model_ner][key_e]["entidades_incorrectas"] = entities[model_ner][key_e]["entidades_incorrectas"] + 1
+                    if not "entidades_correctas" in entities[model_ner][key_e]:
+                        entities[model_ner][key_e]["porcentaje_entidades_correctas"] = 0
+                    elif not "entidades_incorrectas" in entities[model_ner][key_e]:
+                        entities[model_ner][key_e]["porcentaje_entidades_correctas"] = 1
                     else:
-                        entities[model_ner][key_e]["porcentaje_correcto"] = (
-                            entities[model_ner][key_e]["correctos"]/
-                            (entities[model_ner][key_e]["correctos"]+entities[model_ner][key_e]["incorrectos"])
+                        entities[model_ner][key_e]["porcentaje_entidades_correctas"] = (
+                            entities[model_ner][key_e]["entidades_correctas"]/
+                            (entities[model_ner][key_e]["entidades_correctas"]+entities[model_ner][key_e]["entidades_incorrectas"])
+                        )
+                    #pages
+                    if value_e["pagina_es_correcta"]:
+                        if not "paginas_correctas" in entities[model_ner][key_e]:
+                            entities[model_ner][key_e]["paginas_correctas"] = 1
+                        else:
+                            entities[model_ner][key_e]["paginas_correctas"] = entities[model_ner][key_e]["paginas_correctas"] + 1
+                    else:
+                        if not "paginas_incorrectas" in entities[model_ner][key_e]:
+                            entities[model_ner][key_e]["paginas_incorrectas"] = 1
+                        else:
+                            entities[model_ner][key_e]["paginas_incorrectas"] = entities[model_ner][key_e]["paginas_incorrectas"] + 1
+                    if not "paginas_correctas" in entities[model_ner][key_e]:
+                        entities[model_ner][key_e]["porcentaje_paginas_correctas"] = 0
+                    elif not "paginas_incorrectas" in entities[model_ner][key_e]:
+                        entities[model_ner][key_e]["porcentaje_paginas_correctas"] = 1
+                    else:
+                        entities[model_ner][key_e]["porcentaje_paginas_correctas"] = (
+                            entities[model_ner][key_e]["paginas_correctas"]/
+                            (entities[model_ner][key_e]["paginas_correctas"]+entities[model_ner][key_e]["paginas_incorrectas"])
                         )
 
         for model_ner, values_model in entities.items():
             correct = 0
             incorrect = 0
+            correct_pages = 0
+            incorrect_pages = 0
             for entitie, value in values_model.items():
-                if "correctos" in value:
-                    correct = correct+value["correctos"]
-                if "incorrectos" in value:
-                    incorrect = incorrect+value["incorrectos"]
+                if "entidades_correctas" in value:
+                    correct = correct+value["entidades_correctas"]
+                if "entidades_incorrectas" in value:
+                    incorrect = incorrect+value["entidades_incorrectas"]
+                if "paginas_correctas" in value:
+                    correct_pages = correct_pages+value["paginas_correctas"]
+                if "paginas_incorrectas" in value:
+                    incorrect_pages = incorrect_pages+value["paginas_incorrectas"]
             entities[model_ner]["entidades_correctas"] = correct
             entities[model_ner]["entidades_incorrectas"] = incorrect
+            entities[model_ner]["paginas_correctas"] = correct_pages
+            entities[model_ner]["paginas_incorrectas"] = incorrect_pages
             try:
                 entities[model_ner]["porcentaje_entidades_correctas"] = correct/(correct+incorrect)
             except ZeroDivisionError:
                 entities[model_ner]["porcentaje_entidades_correctas"] = 1
+            try:
+                entities[model_ner]["porcentaje_paginas_correctas"] = correct_pages/(correct_pages+incorrect_pages)
+            except ZeroDivisionError:
+                entities[model_ner]["porcentaje_paginas_correctas"] = 1
 
         
         percent_correct_entities = total_correct_entities / (total_correct_entities+total_incorrect_entities)

@@ -24,13 +24,18 @@ class Compare():
                 for key2, value2 in value.items():
                     self.resume[key][key2] = { }
                     for key3, value3 in value2.items():
-                        if key3=="porcentaje_entidades_correctas":
+                        if key3=="porcentaje_entidades_correctas" or key3=="porcentaje_paginas_correctas":
                             self.resume[key][key2][key3+"_"+str(self.new_resume.id_prueba_realizada)] = value3
                             self.resume[key][key2][key3+"_"+str(self.old_resume.id_prueba_realizada)] = self.old_resume.resume[key][key2][key3]
                             self.resume[key][key2][key3+"_mejor"] = 1 if value3>self.old_resume.resume[key][key2][key3] else 0 if value3==self.old_resume.resume[key][key2][key3] else -1
-                        elif key3 not in ["entidades_correctas", "entidades_incorrectas", "porcentaje_entidades_correctas"]:
+                        elif key3 not in ["entidades_correctas", "entidades_incorrectas", "porcentaje_entidades_correctas", 
+                                            "paginas_correctas", "paginas_incorrectas", "porcentaje_paginas_correctas"]:
                             self.resume[key][key2][key3] = { }
-                            self.resume[key][key2][key3]["porcentaje_correcto_"+str(self.new_resume.id_prueba_realizada)] = value3["porcentaje_correcto"]
-                            self.resume[key][key2][key3]["porcentaje_correcto_"+str(self.old_resume.id_prueba_realizada)] = self.old_resume.resume[key][key2][key3]["porcentaje_correcto"]
-                            self.resume[key][key2][key3]["porcentaje_correcto_mejor"] = 1 if value3["porcentaje_correcto"]>self.old_resume.resume[key][key2][key3]["porcentaje_correcto"] else 0 if value3["porcentaje_correcto"]==self.old_resume.resume[key][key2][key3]["porcentaje_correcto"] else -1
+                            self.resume[key][key2][key3]["porcentaje_entidades_correctas_"+str(self.new_resume.id_prueba_realizada)] = value3["porcentaje_entidades_correctas"]
+                            self.resume[key][key2][key3]["porcentaje_entidades_correctas_"+str(self.old_resume.id_prueba_realizada)] = self.old_resume.resume[key][key2][key3]["porcentaje_entidades_correctas"]
+                            self.resume[key][key2][key3]["porcentaje_entidades_correctas_mejor"] = 1 if value3["porcentaje_entidades_correctas"]>self.old_resume.resume[key][key2][key3]["porcentaje_entidades_correctas"] else 0 if value3["porcentaje_entidades_correctas"]==self.old_resume.resume[key][key2][key3]["porcentaje_entidades_correctas"] else -1
+                            #pags
+                            self.resume[key][key2][key3]["porcentaje_paginas_correctas_"+str(self.new_resume.id_prueba_realizada)] = value3["porcentaje_paginas_correctas"]
+                            self.resume[key][key2][key3]["porcentaje_paginas_correctas_"+str(self.old_resume.id_prueba_realizada)] = self.old_resume.resume[key][key2][key3]["porcentaje_paginas_correctas"]
+                            self.resume[key][key2][key3]["porcentaje_paginas_correctas_mejor"] = 1 if value3["porcentaje_paginas_correctas"]>self.old_resume.resume[key][key2][key3]["porcentaje_paginas_correctas"] else 0 if value3["porcentaje_paginas_correctas"]==self.old_resume.resume[key][key2][key3]["porcentaje_paginas_correctas"] else -1
         self.resume["id_pruebas_realizadas_analizadas"] = [self.old_resume.id_prueba_realizada, self.new_resume.id_prueba_realizada]
