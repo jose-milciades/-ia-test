@@ -5,26 +5,24 @@ from app.models.Credito_testeado import Credito_testeado
 from app.models.Resultado import Resultado
 from app.models.Modelo_ner import Modelo_ner
 from app.models.Entidad import Entidad
+from app.models.Datos_comparacion import Datos_comparacion
 from app.Log import Log
 import json
 import unidecode
 from app.database.sqlAlchemyORM import db
 from datetime import datetime
+import os
 
 class Test:
     credito_testeado: Credito_testeado
     resultado: Resultado
     modelos_ner: [ Modelo_ner ]
     entidades: [ Entidad ]
-    def __init__(self, num_credito, send_with_correct_text, name_excel_results=None, make_test=True, id_credito_testeado=None):
+    def __init__(self, num_credito, send_with_correct_text, make_test=True, id_credito_testeado=None):
         self.send_with_correct_text = send_with_correct_text
         self.modelos_entidades = { }
         if id_credito_testeado is None:
             self.credito_testeado = Credito_testeado(num_credito)
-            if name_excel_results == None:
-                self.name_excel_results = str(num_credito)+".xlsx"
-            else:
-                self.name_excel_results = name_excel_results
             self.db = database_test_robot
             self.modelos_ner = [ ]
             self.entidades = [ ]
@@ -69,8 +67,10 @@ class Test:
         Log.i(__name__, f"Cantidad de entidades a encontrar: {len(tabla_entidades2)}")
         Log.i(__name__, f"Cantidad de entidades vacías: {len(tabla_entidades_vacias)}")
         Log.i(__name__, f"Porcentaje de entidades encontradas: {(len(tabla_entidades2)-len(tabla_entidades_vacias))/len(tabla_entidades2)}")
+
+        datos_comparacion = Datos_comparacion.query.filter_by(credito=self.credito_testeado.credito).first()
         
-        results = pd.read_excel("app/results/"+str(self.name_excel_results))
+        results = datos_comparacion.dataframe()
 
         tabla_entidades3 = tabla_entidades2.copy()
         tabla_entidades3["valor_real"] = ""
@@ -113,7 +113,7 @@ class Test:
                                 porcentaje_paginas_correctas=correct_pages[0]/(correct_pages[0]+correct_pages[1]), 
                                 id_credito_testeado=self.credito_testeado.id)
         self.modelos_entidades["entidades"] = self.put_entities(tabla_entidades3, self.send_with_correct_text, False)
-        self.save_in_excel(tabla_entidades3, json.loads(self.__repr__()))
+        #self.save_in_excel(tabla_entidades3, json.loads(self.__repr__()))
         self.save_all_models()
     
     def get_tabla_entidades(self, id_cat_tipo_demanda, activo=True):
@@ -217,11 +217,24 @@ class Test:
             entities = {**entities, **modelo_dict}
         return entities
 
-    def save_in_excel(self, df, result):
+    def save_in_excel(self, df, result, path=None):
+        if result is None:
+            result = json.loads(self.__repr__())
+        if path is None:
+            path = os.environ.get("PATH_RESULTS_TEMPS")
         df2 = pd.DataFrame.from_dict(result, orient='index')
-        with pd.ExcelWriter("app/results/reviewed/"+self.credito_testeado.credito+'.xlsx') as writer:  
-            df.to_excel(writer, sheet_name='table')
+        path_name = path+self.credito_testeado.credito+'_resultado.xlsx'
+        with pd.ExcelWriter(path_name) as writer:  
             df2.to_excel(writer, sheet_name='results')
+            if df is not None:
+                df.to_excel(writer, sheet_name='table')
+
+        return path_name
+
+    def delete_temp(self, path=None):
+        if path is None:
+            path = os.environ.get("PATH_RESULTS_TEMPS")
+        os.remove(path+self.credito_testeado.credito+'_resultado.xlsx')
 
     def save_all_models(self):
         db.session.commit()
